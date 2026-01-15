@@ -43,6 +43,15 @@ A powerful, stealthy Discord self-bot designed for efficient message management 
    ./setup_purger.sh
    ```
 
+### 🪟 Windows
+1. **Clone the repository**:
+   ```powershell
+   git clone https://github.com/GH0ST-codes-pl/Discord-Purger-Selfbot.git
+   cd Discord-Purger-Selfbot
+   ```
+2. **Run Setup Script**:
+   - Double-click `setup_purger.bat` or run it via CMD/PowerShell.
+
 ### ⚙️ Configuration (All Platforms)
 1. Rename `.env.example` to `.env`.
 2. Insert your **User Token** into `DISCORD_BOT_TOKEN`.
@@ -50,9 +59,14 @@ A powerful, stealthy Discord self-bot designed for efficient message management 
 
 ## 🚀 Usage
 
-Run the bot:
+### macOS / Linux / Termux:
 ```bash
 ./venv/bin/python purger_bot.py
+```
+
+### Windows:
+```powershell
+venv\Scripts\python purger_bot.py
 ```
 
 ### Commands

@@ -85,12 +85,19 @@ async def on_ready():
 async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=None):
     """
     Unified purging logic with rate-limit handling, whitelist protection, 
-    and dynamic delays.
+    dynamic delays, and permission auto-detection.
     """
     global whitelist_ids, deletion_delay
     scanned_count = 0
     deleted_count = 0
     
+    # 🕵️ Permission Check: Can we delete other people's messages?
+    permissions = ctx.channel.permissions_for(ctx.author)
+    can_manage = permissions.manage_messages or permissions.administrator
+    
+    if not can_manage:
+        console.print("[bold yellow]⚠️ No 'Manage Messages' permission! Switching to PERSONAL MODE (clearing only your own content).[/bold yellow]")
+
     async for message in history_iterator:
         scanned_count += 1
         
@@ -105,23 +112,33 @@ async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=Non
         if message.id in whitelist_ids:
             continue
 
+        # Logic: If no admin perms, we ONLY delete OUR messages, even if filter_func matches.
+        # If we have admin perms, we follow the filter_func exactly.
+        is_own_message = message.author.id == bot.user.id
+        
         if filter_func(message):
-            try:
-                await message.delete()
-                deleted_count += 1
-                console.print(f"[bold red]🔥 [DELETE] #{deleted_count}[/bold red] ([dim]Scanned: {scanned_count}[/dim])")
-                await asyncio.sleep(deletion_delay)
-            except discord.HTTPException as e:
-                if e.status == 429:
-                    wait_time = e.retry_after + 2
-                    console.print(f"[bold yellow]⚠️ Rate limit hit! Waiting {wait_time:.2f}s...[/bold yellow]")
-                    await asyncio.sleep(wait_time)
-                    try: 
-                        await message.delete()
-                        deleted_count += 1
-                    except: pass
-                else:
-                    console.print(f"[bold red]❌ API Error: {e}[/bold red]")
+            if can_manage or is_own_message:
+                try:
+                    await message.delete()
+                    deleted_count += 1
+                    
+                    # Truncate content for cleaner output
+                    content = (message.content[:40] + '...') if len(message.content) > 40 else message.content
+                    content = content.replace("\n", " ") # Keep it on one line
+                    
+                    console.print(f"[bold red]🔥 [DELETE][/bold red] [cyan]#{deleted_count}[/cyan] [dim]|[/dim] [green]#{message.channel.name}[/green] [dim]|[/dim] [white]{content}[/white]")
+                    await asyncio.sleep(deletion_delay)
+                except discord.HTTPException as e:
+                    if e.status == 429:
+                        wait_time = e.retry_after + 2
+                        console.print(f"[bold yellow]⚠️ Rate limit hit! Waiting {wait_time:.2f}s...[/bold yellow]")
+                        await asyncio.sleep(wait_time)
+                        try: 
+                            await message.delete()
+                            deleted_count += 1
+                        except: pass
+                    else:
+                        console.print(f"[bold red]❌ API Error: {e}[/bold red]")
                     
     return scanned_count, deleted_count
 

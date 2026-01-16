@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger("purger")
 
 def draw_banner():
-    banner_text = """
+    banner_text = r"""
     [magenta]
     ██████╗ ██╗   ██╗██████╗  ██████╗ ███████╗██████╗ 
     ██╔══██╗██║   ██║██╔══██╗██╔════╝ ██╔════╝██╔══██╗

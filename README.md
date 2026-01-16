@@ -2,7 +2,9 @@
 
 ![CLI Preview](preview_v2.png)
 
-A professional, high-performance Discord selfbot for deep message cleanup. It features a beautiful CLI, advanced scanning capabilities, and real-time monitoring.
+**Discord Message Purger Selfbot** is a state-of-the-art, high-performance utility designed for meticulous digital housekeeping on Discord. Built with an asynchronous architecture and a sleek, interactive terminal interface, it offers unparalleled control over your message history. Whether you're conducting a deep cleanup of legacy content or monitoring channels in real-time, this tool provides the precision and speed required for professional-level channel management.
+
+**Discord Message Purger Selfbot** to zaawansowane, wysokowydajne narzędzie stworzone do precyzyjnego zarządzania historią wiadomości na Discordzie. Dzięki asynchronicznej architekturze i nowoczesnemu, interaktywnemu interfejsowi terminalowemu (Rich TUI), oferuje pełną kontrolę nad Twoim cyfrowym śladem. Niezależnie od tego, czy przeprowadzasz głębokie czyszczenie historycznych treści, czy monitorujesz kanały w czasie rzeczywistym, to narzędzie zapewnia precyzję i szybkość klasy profesjonalnej.
 
 > [!CAUTION]
 > **DISCLAIMER**: Using self-bots is against Discord's Terms of Service. This tool is for educational purposes only. Use it at your own risk; your account may be permanently banned.

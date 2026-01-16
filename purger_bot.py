@@ -62,6 +62,7 @@ target_user_id = None
 watched_words = []
 whitelist_ids = set()
 deletion_delay = 2.2 # Default safe delay
+cancel_purge = False # Global flag for stopping ongoing operations
 
 URL_REGEX = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 
@@ -84,6 +85,7 @@ async def on_ready():
     table.add_row(".whitelist", ".whitelist <add/list/clear>", "Manage protected messages")
     table.add_row(".speed", ".speed <safe/fast/insane>", "Adjust deletion delay")
     table.add_row(".multipurge", ".multipurge #c1 #c2", "Purge across multiple channels")
+    table.add_row(".stop", ".stop", "Cancel any ongoing purge operation")
     table.add_row(".shutdown", ".shutdown", "Gracefully stop the bot")
     
     console.print(table)
@@ -95,7 +97,8 @@ async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=Non
     Unified purging logic with rate-limit handling, whitelist protection, 
     dynamic delays, and permission auto-detection.
     """
-    global whitelist_ids, deletion_delay
+    global whitelist_ids, deletion_delay, cancel_purge
+    cancel_purge = False # Reset flag when a new purge starts
     scanned_count = 0
     deleted_count = 0
     
@@ -107,6 +110,10 @@ async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=Non
         console.print("[bold yellow]⚠️ No 'Manage Messages' permission! Switching to PERSONAL MODE (clearing only your own content).[/bold yellow]")
 
     async for message in history_iterator:
+        if cancel_purge:
+            console.print("[bold yellow]🛑 Purge operation cancelled by user.[/bold yellow]")
+            break
+            
         scanned_count += 1
         
         # Stop if we hit the limit
@@ -160,10 +167,19 @@ async def on_message(message):
         return
 
     # 1. Auto-delete new messages from the targeted user
-    if target_user_id and message.author.id == target_user_id:
+    is_everyone = target_user_id == "everyone"
+    is_target_user = target_user_id and message.author.id == target_user_id
+    
+    if (is_everyone or is_target_user) and message.author.id != bot.user.id:
         try:
             await message.delete()
-            console.print(f"[bold red]🔥 [AUTO-DELETE][/bold red] Deleted user message from [cyan]{message.author}[/cyan]")
+            mode_label = "EVERYONE" if is_everyone else "USER"
+            
+            # Truncate content for cleaner output
+            content = (message.content[:500] + '...') if len(message.content) > 500 else message.content
+            content = content.replace("\n", " ")
+            
+            console.print(f"[bold red]🔥 [AUTO-DELETE-{mode_label}][/bold red] [cyan]{message.author}[/cyan] [dim]|[/dim] [white]{content}[/white]")
         except:
             pass
             
@@ -173,7 +189,12 @@ async def on_message(message):
         if word.lower() in content_lower:
             try:
                 await message.delete()
-                console.print(f"[bold red]🔥 [WATCH-WORD][/bold red] Deleted message containing '[yellow]{word}[/yellow]' from [cyan]{message.author}[/cyan]")
+                
+                # Truncate content for cleaner output
+                disp_content = (message.content[:500] + '...') if len(message.content) > 500 else message.content
+                disp_content = disp_content.replace("\n", " ")
+                
+                console.print(f"[bold red]🔥 [WATCH-WORD][/bold red] '[yellow]{word}[/yellow]' [dim]|[/dim] [cyan]{message.author}[/cyan] [dim]|[/dim] [white]{disp_content}[/white]")
                 break # One deletion is enough
             except:
                 pass
@@ -181,7 +202,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 @bot.command(name="watch_user")
-async def watch_user(ctx, user: discord.User = None):
+async def watch_user(ctx, user_input: str = None):
     global target_user_id
     
     try:
@@ -189,14 +210,38 @@ async def watch_user(ctx, user: discord.User = None):
     except:
         pass
         
-    if user is None or (target_user_id == user.id):
+    # Check for "everyone" or "@everyone"
+    is_everyone = user_input and user_input.lower() in ["everyone", "@everyone"]
+    
+    if user_input is None or (not is_everyone and target_user_id == user_input):
+        # Reset if no input or toggling off specific user ID string (legacy check)
         target_user_id = None
-        console.print("[bold yellow]🛑 Stopped user monitoring.[/bold yellow]")
-        await ctx.author.send("🛑 Real-time monitoring disabled.")
-    else:
-        target_user_id = user.id
-        console.print(f"[bold green]👀 Started monitoring user: {user.name}[/bold green]")
-        await ctx.author.send(f"👀 Real-time monitoring enabled for: {user.name}. Type `.watch_user` again to disable.")
+        console.print("[bold yellow]🛑 Stopped monitoring.[/bold yellow]")
+        return
+
+    if is_everyone:
+        if target_user_id == "everyone":
+            target_user_id = None
+            console.print("[bold yellow]🛑 Stopped monitoring everyone.[/bold yellow]")
+        else:
+            target_user_id = "everyone"
+            console.print("[bold green]👀 Started monitoring EVERYONE.[/bold green]")
+        return
+
+    # Try to resolve user
+    try:
+        # Check if it's a mention or ID
+        converter = commands.UserConverter()
+        user = await converter.convert(ctx, user_input)
+        
+        if target_user_id == user.id:
+            target_user_id = None
+            console.print(f"[bold yellow]🛑 Stopped monitoring user: {user.name}[/bold yellow]")
+        else:
+            target_user_id = user.id
+            console.print(f"[bold green]👀 Started monitoring user: {user.name}[/bold green]")
+    except commands.BadArgument:
+        console.print(f"[bold red]❌ Could not find user: {user_input}[/bold red]")
 
 
 @bot.command(name="watch_word")
@@ -209,17 +254,15 @@ async def watch_word(ctx, word: str = None):
         pass
         
     if word is None:
-        await ctx.author.send(f"📋 Currently watched words: {', '.join(watched_words) or 'None'}")
+        console.print(f"[cyan]📋 Currently watched words: {', '.join(watched_words) or 'None'}[/cyan]")
         return
 
     if word.lower() in [w.lower() for w in watched_words]:
         watched_words = [w for w in watched_words if w.lower() != word.lower()]
         console.print(f"🛑 Stopped monitoring word: {word}")
-        await ctx.author.send(f"🛑 Stopped monitoring word: {word}")
     else:
         watched_words.append(word)
         console.print(f"👀 Started monitoring word: {word}")
-        await ctx.author.send(f"👀 Started monitoring word: {word}")
 
 @bot.command(name="purge_user")
 async def purge_user(ctx, user: discord.User = None, limit: int = 1000):
@@ -241,7 +284,6 @@ async def purge_user(ctx, user: discord.User = None, limit: int = 1000):
 
     msg = f"✅ Deleted {d_count} messages from {target.name} (Scanned {s_count})"
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="purge_word")
 async def purge_word(ctx, word: str, limit: int = 1000):
@@ -262,7 +304,6 @@ async def purge_word(ctx, word: str, limit: int = 1000):
 
     msg = f"✅ Deleted {d_count} messages containing '{word}' (Scanned {s_count})"
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="purge_media")
 async def purge_media(ctx, limit: int = 1000):
@@ -283,7 +324,6 @@ async def purge_media(ctx, limit: int = 1000):
 
     msg = f"✅ Deleted {d_count} messages with media (Scanned {s_count})"
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="purge_links")
 async def purge_links(ctx, limit: int = 1000):
@@ -304,14 +344,13 @@ async def purge_links(ctx, limit: int = 1000):
 
     msg = f"✅ Deleted {d_count} messages with links (Scanned {s_count})"
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="purge_since")
 async def purge_since(ctx, date_str: str, limit: int = 1000):
     try:
         since_date = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        await ctx.author.send("❌ Invalid format! Use: `.purge_since YYYY-MM-DD`")
+        console.print("❌ Invalid format! Use: `.purge_since YYYY-MM-DD`")
         return
 
     actual_limit = limit if limit > 0 else None
@@ -331,7 +370,6 @@ async def purge_since(ctx, date_str: str, limit: int = 1000):
 
     msg = f"✅ Deleted {d_count} messages since {date_str} (Scanned {s_count})"
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="whitelist")
 async def whitelist(ctx, action: str = "list", message_id: int = None):
@@ -355,7 +393,6 @@ async def whitelist(ctx, action: str = "list", message_id: int = None):
         msg = f"📋 Current Whitelist: {', '.join(map(str, whitelist_ids)) or 'Empty'}"
 
     console.print(msg)
-    await ctx.author.send(msg)
 
 @bot.command(name="speed")
 async def speed(ctx, mode: str = "safe"):
@@ -378,17 +415,16 @@ async def speed(ctx, mode: str = "safe"):
         try:
             deletion_delay = float(mode)
         except ValueError:
-            await ctx.author.send("❌ Usage: `.speed <safe/fast/insane/float>`")
+            console.print("❌ Usage: `.speed <safe/fast/insane/float>`")
             return
 
     msg = f"⚡ Speed set to: {mode} ({deletion_delay}s delay)"
     console.print(f"[bold yellow]{msg}[/bold yellow]")
-    await ctx.author.send(msg)
 
 @bot.command(name="multipurge")
 async def multipurge(ctx, *channels: discord.TextChannel):
     if not channels:
-        await ctx.author.send("❌ Usage: `.multipurge #chan1 #chan2 ...`")
+        console.print("❌ Usage: `.multipurge #chan1 #chan2 ...`")
         return
 
     try:
@@ -400,6 +436,9 @@ async def multipurge(ctx, *channels: discord.TextChannel):
     
     total_deleted = 0
     for channel in channels:
+        if cancel_purge:
+            break
+            
         console.print(f"[magenta]🌐 Purging channel: {channel.name}...[/magenta]")
         try:
             _, d_count = await smart_purge(
@@ -413,7 +452,6 @@ async def multipurge(ctx, *channels: discord.TextChannel):
 
     msg = f"✅ MULTI-PURGE FINISHED! Deleted {total_deleted} messages across {len(channels)} channels."
     console.print(f"[bold green]{msg}[/bold green]")
-    await ctx.author.send(msg)
 
 @bot.command(name="shutdown")
 async def shutdown(ctx):
@@ -427,8 +465,20 @@ async def shutdown(ctx):
     console.print(f"[bold magenta]   {msg}   [/bold magenta]")
     console.print(f"[bold magenta]{'='*40}[/bold magenta]\n")
     
-    await ctx.author.send("🛑 **Selfbot turned off.**")
     await bot.close()
+
+@bot.command(name="stop")
+async def stop_purge(ctx):
+    global cancel_purge
+    cancel_purge = True
+    
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    msg = "🛑 Requested purge cancellation..."
+    console.print(f"[bold yellow]{msg}[/bold yellow]")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -445,10 +495,6 @@ async def on_command_error(ctx, error):
         error_msg = f"❌ Command error: {error}"
     
     print(error_msg)
-    try:
-        await ctx.author.send(error_msg)
-    except:
-        pass
     
     try:
         await ctx.message.delete()

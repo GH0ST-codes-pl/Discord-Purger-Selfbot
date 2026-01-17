@@ -19,6 +19,50 @@
 - **Safe Rate Limiting**: Intelligent delays and automatic retry logic to minimize 429 errors.
 - **Rich CLI**: A beautiful, colorful terminal interface with real-time feedback.
 - **Private Reporting**: Get detailed execution summaries delivered straight to your DMs.
+    
+## 🆕 First Time? Beginner's Guide (Step-by-Step)
+
+If you have never used a terminal before, follow these simple steps to get the bot running on **Windows**:
+
+1.  **Install Python**:
+    - Download Python from [python.org](https://www.python.org/downloads/).
+    - **IMPORTANT**: During installation, check the box that says **"Add Python to PATH"**.
+2.  **Download the Bot**:
+    - Click the green **"Code"** button at the top of this GitHub page and select **"Download ZIP"**.
+    - Extract the ZIP file to a folder (e.g., on your Desktop).
+3.  **Open the Folder**:
+    - Go into the folder where you extracted the files.
+    - Click on the address bar at the top of the folder window, type `cmd` and press **Enter**. A black window will open.
+4.  **Run the Setup**:
+    - In the black window, type `setup_purger.bat` and press **Enter**. Wait for it to finish.
+5.  **Configure your settings**:
+    - In the folder, find a file named `.env.example`. Rename it to `.env`.
+    - Right-click `.env`, open it with Notepad, and paste your Discord Token (see below).
+6.  **Start the Bot**:
+    - In the black window, type: `venv\Scripts\python purger_bot.py` and press **Enter**.
+
+---
+
+## 🆕 Pierwszy raz? Poradnik dla początkujących
+
+Jeśli nigdy wcześniej nie używałeś terminala, wykonaj te proste kroki, aby uruchomić bota na systemie **Windows**:
+
+1.  **Zainstaluj Pythona**:
+    - Pobierz Pythona ze strony [python.org](https://www.python.org/downloads/).
+    - **WAŻNE**: Podczas instalacji zaznacz pole **"Add Python to PATH"**.
+2.  **Pobierz bota**:
+    - Kliknij zielony przycisk **"Code"** na górze tej strony i wybierz **"Download ZIP"**.
+    - Rozpakuj plik ZIP do folderu (np. na pulpicie).
+3.  **Otwórz folder**:
+    - Wejdź do folderu, do którego wypakowałeś pliki.
+    - Kliknij w pasek adresu na górze okna folderu, wpisz `cmd` i naciśnij **Enter**. Otworzy się czarne okno.
+4.  **Uruchom instalację**:
+    - W czarnym oknie wpisz `setup_purger.bat` i naciśnij **Enter**. Poczekaj, aż skończy.
+5.  **Skonfiguruj ustawienia**:
+    - W folderze znajdź plik `.env.example`. Zmień jego nazwę na `.env`.
+    - Kliknij prawym przyciskiem na `.env`, otwórz za pomocą Notatnika i wklej swój Token Discorda (opis poniżej).
+6.  **Uruchom bota**:
+    - W czarnym oknie wpisz: `venv\Scripts\python purger_bot.py` i naciśnij **Enter**.
 
 ## 🛠️ Installation
 

